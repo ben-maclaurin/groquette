@@ -126,27 +126,20 @@ impl fmt::Debug for Expression {
 }
 
 fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
-    let word =
-        filter::<_, _, Cheap<char>>(|c: &char| c.is_ascii_alphanumeric() || c.is_whitespace())
-            .repeated()
-            .at_least(1);
+    let word = any::<_, Cheap<char>>().repeated().at_least(1);
 
-    let inline_comment =
-        filter::<_, _, Cheap<char>>(|c: &char| c.is_ascii_alphanumeric() || c.is_whitespace())
-            .repeated()
-            .at_least(1)
-            .ignored()
-            .then(just('/'))
-            .then(just('/'))
-            .then(just(' '))
-            .then(word)
-            .map(|c| {
-                Expression::Comment(Unary {
-                    unary_type: CommentType::Inline,
-                    value: c.1.into_iter().collect::<String>(),
-                    operand: OperatorCall::Comment,
-                })
-            });
+    let inline_comment = take_until(just("//"))
+        .ignored()
+        .then(take_until(text::newline()))
+        .map(|c| {
+            let (test, value) = c.1;
+
+            Expression::Comment(Unary {
+                unary_type: CommentType::Inline,
+                value: test.into_iter().collect(),
+                operand: OperatorCall::Comment,
+            })
+        });
 
     let single_line_comment = just::<_, _, Cheap<char>>('/')
         .then(just('/'))
@@ -166,7 +159,13 @@ fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
 }
 
 fn main() {
-    let groq = "this // this is a comment";
+    let single_line_comment = "// single line comment";
+    let inline_comment = r#"[test] // single line comment
+
+and"#;
+
+    println!("{:?}", parse_comment(single_line_comment).unwrap());
+    println!("{:?}", parse_comment(inline_comment));
 }
 
 #[cfg(test)]
@@ -181,7 +180,7 @@ mod tests {
             parse_comment(single_line_comment).unwrap(),
             Expression::Comment(Unary {
                 operand: OperatorCall::Comment,
-                unary_type: CommentType::Inline,
+                unary_type: CommentType::Single,
                 value: "single line comment".to_string()
             })
         );
@@ -189,7 +188,7 @@ mod tests {
 
     #[test]
     fn can_parse_inline_comment() {
-        let inline_comment = "test // inline comment";
+        let inline_comment = "text // inline comment";
 
         assert_eq!(
             parse_comment(inline_comment).unwrap(),
