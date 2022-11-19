@@ -3,7 +3,7 @@ use std::fmt;
 use chumsky::{combinator::Map, error::Cheap, prelude::*, primitive::Filter};
 
 // string is temporary, these need to be typed
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 enum Expression {
     Literal(Literal),
     SimpleExpression(SimpleExpression),
@@ -12,17 +12,17 @@ enum Expression {
     Comment(Unary<String>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum Literal {
     Null,
-    Boolean,
+    Boolean(bool),
     Number,
     String,
     Array,
     Object,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum SimpleExpression {
     This,
     ThisAttribute,
@@ -31,14 +31,14 @@ enum SimpleExpression {
     FuncCall,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum CompoundExpression {
     Parenthesis,
     TraversalExpression,
     PipeFuncCall,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 enum OperatorCall {
     And,
     Or,
@@ -60,36 +60,43 @@ enum OperatorCall {
     Comment,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct Unary<U> {
     operand: OperatorCall,
     value: U,
 }
 
-fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
-    take_until(just("// "))
-        .ignored()
-        .then(take_until(text::newline()))
-        .map(|c| {
-            let (value, _) = c.1;
+fn ast(input: &str) -> Result<Vec<Expression>, Vec<Simple<char>>> {
+    let comment = just("//").then(take_until(text::newline())).map(|c| {
+        let (value, _) = c.1;
 
-            Expression::Comment(Unary {
-                value: value.into_iter().collect(),
-                operand: OperatorCall::Comment,
-            })
+        Expression::Comment(Unary {
+            value: value.into_iter().collect(),
+            operand: OperatorCall::Comment,
         })
-        .parse(input)
-}
+    });
 
-fn ast(input: &str) -> Vec<Expression> {
-    return vec![parse_comment(input).unwrap()];
+    let result = choice::<_, Simple<char>>((
+        comment,
+        text::keyword("true")
+            .padded()
+            .to(Expression::Literal(Literal::Boolean(true))),
+        text::keyword("false")
+            .padded()
+            .to(Expression::Literal(Literal::Boolean(false))),
+    ))
+    .padded()
+    .repeated();
+
+    result.parse(input)
 }
 
 fn main() {
-    let single_line_comment = r#"// this is a single line comment
+    let test = r#"false true // single line comment
 "#;
 
-    println!("{:?}", ast(single_line_comment));
+    println!("{:?}", ast(test));
+    println!("{}", test.trim())
 }
 
 #[cfg(test)]
