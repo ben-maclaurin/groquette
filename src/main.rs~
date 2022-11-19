@@ -1,0 +1,42 @@
+use chumsky::{error::Cheap, prelude::*};
+
+#[derive(Clone, Debug)]
+enum Language {
+    Comment(String),
+}
+
+fn main() {
+    let word = filter::<_, _, Cheap<char>>(|c: &char| c.is_alphabetic())
+        .repeated()
+        .at_least(1)
+        .collect::<String>()
+        .map(Language::Comment);
+
+    let inline_comment = filter::<_, _, Cheap<char>>(|c: &char| c.is_alphabetic())
+        .repeated()
+        .at_least(1)
+        .ignored()
+        .then(just(' '))
+        .then(just('/'))
+        .then(just('/'))
+        .then(just(' '))
+        .then(word);
+
+    let single_line_comment = just::<_, _, Cheap<char>>('/')
+        .then(just('/'))
+        .then(just(' '))
+        .then(word);
+
+    let groq = "test // arisha wooo hooooo";
+
+    // this is a comment
+    match inline_comment.parse(groq) {
+        Ok(result) => println!("{:?}", result.1),
+        Err(_) => println!("not matched!"),
+    }
+
+    match single_line_comment.parse(groq) {
+        Ok(result) => println!("{:?}", result.1),
+        Err(_) => println!("not matched!"),
+    }
+}
