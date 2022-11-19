@@ -101,12 +101,12 @@ impl fmt::Debug for OperatorCall {
 impl fmt::Debug for Unary<CommentType, String> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.unary_type {
-            CommentType::Inline => write!(f, "{:?} {}", &self.operand, &self.value),
+            CommentType::Inline => write!(f, "{:?}{}", &self.operand, &self.value),
             CommentType::Single => {
                 if &self.value.len() > &10 {
-                    write!(f, "{:?} {}", &self.operand, &self.value)
+                    write!(f, "{:?}{}", &self.operand, &self.value)
                 } else {
-                    write!(f, "{:?} {}", &self.operand, &self.value)
+                    write!(f, "{:?}{}", &self.operand, &self.value)
                 }
             }
         }
@@ -132,23 +132,23 @@ fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
         .ignored()
         .then(take_until(text::newline()))
         .map(|c| {
-            let (test, value) = c.1;
+            let (value, _) = c.1;
 
             Expression::Comment(Unary {
                 unary_type: CommentType::Inline,
-                value: test.into_iter().collect(),
+                value: value.into_iter().collect(),
                 operand: OperatorCall::Comment,
             })
         });
 
-    let single_line_comment = just::<_, _, Cheap<char>>('/')
-        .then(just('/'))
-        .then(just(' '))
-        .then(word)
+    let single_line_comment = just::<_, _, Cheap<char>>("//")
+        .then(take_until(text::newline()))
         .map(|c| {
+            let (value, _) = c.1;
+
             Expression::Comment(Unary {
                 unary_type: CommentType::Single,
-                value: c.1.into_iter().collect::<String>(),
+                value: value.into_iter().collect(),
                 operand: OperatorCall::Comment,
             })
         });
@@ -158,14 +158,15 @@ fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
     result.parse(input)
 }
 
+fn ast(input: &str) -> Vec<Expression> {
+    return vec![parse_comment(input).unwrap()];
+}
+
 fn main() {
-    let single_line_comment = "// single line comment";
-    let inline_comment = r#"[test] // single line comment
+    let single_line_comment = r#"// this is a single line comment
+"#;
 
-and"#;
-
-    println!("{:?}", parse_comment(single_line_comment).unwrap());
-    println!("{:?}", parse_comment(inline_comment));
+    println!("{:?}", ast(single_line_comment));
 }
 
 #[cfg(test)]
