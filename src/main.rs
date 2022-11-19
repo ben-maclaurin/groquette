@@ -67,9 +67,7 @@ struct Unary<U> {
 }
 
 fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
-    let word = any::<_, Cheap<char>>().repeated().at_least(1);
-
-    let inline_comment = take_until(just("// "))
+    take_until(just("// "))
         .ignored()
         .then(take_until(text::newline()))
         .map(|c| {
@@ -79,11 +77,8 @@ fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
                 value: value.into_iter().collect(),
                 operand: OperatorCall::Comment,
             })
-        });
-
-    let result = inline_comment;
-
-    result.parse(input)
+        })
+        .parse(input)
 }
 
 fn ast(input: &str) -> Vec<Expression> {
