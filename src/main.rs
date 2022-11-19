@@ -9,7 +9,7 @@ enum Expression {
     SimpleExpression(SimpleExpression),
     CompoundExpression(CompoundExpression),
     OperatorCall(OperatorCall),
-    Comment(Unary<CommentType, String>),
+    Comment(Unary<String>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -60,16 +60,9 @@ enum OperatorCall {
     Comment,
 }
 
-#[derive(Debug, PartialEq)]
-enum CommentType {
-    Inline,
-    Single,
-}
-
 #[derive(PartialEq, Debug)]
-struct Unary<T, U> {
+struct Unary<U> {
     operand: OperatorCall,
-    unary_type: T,
     value: U,
 }
 
@@ -83,25 +76,12 @@ fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
             let (value, _) = c.1;
 
             Expression::Comment(Unary {
-                unary_type: CommentType::Inline,
                 value: value.into_iter().collect(),
                 operand: OperatorCall::Comment,
             })
         });
 
-    let single_line_comment = just::<_, _, Cheap<char>>("// ")
-        .then(take_until(text::newline()))
-        .map(|c| {
-            let (value, _) = c.1;
-
-            Expression::Comment(Unary {
-                unary_type: CommentType::Single,
-                value: value.into_iter().collect(),
-                operand: OperatorCall::Comment,
-            })
-        });
-
-    let result = inline_comment.or(single_line_comment);
+    let result = inline_comment;
 
     result.parse(input)
 }
@@ -131,7 +111,6 @@ mod tests {
             parse_comment(single_line_comment).unwrap(),
             Expression::Comment(Unary {
                 operand: OperatorCall::Comment,
-                unary_type: CommentType::Single,
                 value: "single line comment".to_string()
             })
         );
@@ -147,7 +126,6 @@ mod tests {
             parse_comment(inline_comment).unwrap(),
             Expression::Comment(Unary {
                 operand: OperatorCall::Comment,
-                unary_type: CommentType::Inline,
                 value: "inline comment".to_string()
             })
         );
