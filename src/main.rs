@@ -3,6 +3,7 @@ use std::fmt;
 use chumsky::{combinator::Map, error::Cheap, prelude::*, primitive::Filter};
 
 // string is temporary, these need to be typed
+#[derive(PartialEq)]
 enum Expression {
     Literal(Literal),
     SimpleExpression(SimpleExpression),
@@ -11,7 +12,7 @@ enum Expression {
     Comment(Unary<CommentType, String>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Literal {
     Null,
     Boolean,
@@ -21,7 +22,7 @@ enum Literal {
     Object,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum SimpleExpression {
     This,
     ThisAttribute,
@@ -30,13 +31,14 @@ enum SimpleExpression {
     FuncCall,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum CompoundExpression {
     Parenthesis,
     TraversalExpression,
     PipeFuncCall,
 }
 
+#[derive(PartialEq)]
 enum OperatorCall {
     And,
     Or,
@@ -58,12 +60,13 @@ enum OperatorCall {
     Comment,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum CommentType {
     Inline,
     Single,
 }
 
+#[derive(PartialEq)]
 struct Unary<T, U> {
     operand: OperatorCall,
     unary_type: T,
@@ -101,7 +104,7 @@ impl fmt::Debug for Unary<CommentType, String> {
             CommentType::Inline => write!(f, "{:?} {}", &self.operand, &self.value),
             CommentType::Single => {
                 if &self.value.len() > &10 {
-                    write!(f, "this will be multiline comment")
+                    write!(f, "{:?} {}", &self.operand, &self.value)
                 } else {
                     write!(f, "{:?} {}", &self.operand, &self.value)
                 }
@@ -122,13 +125,14 @@ impl fmt::Debug for Expression {
     }
 }
 
-fn main() {
-    let word = filter::<_, _, Cheap<char>>(|c: &char| c.is_alphanumeric() || c.is_whitespace())
-        .repeated()
-        .at_least(1);
+fn parse_comment(input: &str) -> Result<Expression, Vec<Cheap<char>>> {
+    let word =
+        filter::<_, _, Cheap<char>>(|c: &char| c.is_ascii_alphanumeric() || c.is_whitespace())
+            .repeated()
+            .at_least(1);
 
     let inline_comment =
-        filter::<_, _, Cheap<char>>(|c: &char| c.is_alphanumeric() || c.is_whitespace())
+        filter::<_, _, Cheap<char>>(|c: &char| c.is_ascii_alphanumeric() || c.is_whitespace())
             .repeated()
             .at_least(1)
             .ignored()
@@ -156,15 +160,44 @@ fn main() {
             })
         });
 
-    let groq = "this // this is a comment";
+    let result = inline_comment.or(single_line_comment);
 
-    match inline_comment.parse(groq) {
-        Ok(result) => println!("{:?}", result),
-        Err(_) => println!("not matched!"),
+    result.parse(input)
+}
+
+fn main() {
+    let groq = "this // this is a comment";
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn can_parse_single_line_comment() {
+        let single_line_comment = "// single line comment";
+
+        assert_eq!(
+            parse_comment(single_line_comment).unwrap(),
+            Expression::Comment(Unary {
+                operand: OperatorCall::Comment,
+                unary_type: CommentType::Inline,
+                value: "single line comment".to_string()
+            })
+        );
     }
 
-    match single_line_comment.parse(groq) {
-        Ok(result) => println!("{:?}", result),
-        Err(_) => println!("not matched!"),
+    #[test]
+    fn can_parse_inline_comment() {
+        let inline_comment = "test // inline comment";
+
+        assert_eq!(
+            parse_comment(inline_comment).unwrap(),
+            Expression::Comment(Unary {
+                operand: OperatorCall::Comment,
+                unary_type: CommentType::Inline,
+                value: "inline comment".to_string()
+            })
+        );
     }
 }
