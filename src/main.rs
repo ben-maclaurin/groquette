@@ -1,6 +1,6 @@
 use std::fmt;
 
-use chumsky::{combinator::Map, error::Cheap, prelude::*, primitive::Filter};
+use chumsky::{combinator::Map, error::Cheap, prelude::*, primitive::Filter, text::ident};
 
 #[derive(Debug, PartialEq, Clone)]
 enum Literal {
@@ -74,18 +74,23 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
         Literal::Comment(value.into_iter().collect())
     });
 
-    let boolean = text::keyword("true")
+    let bool = text::keyword("true")
         .padded()
         .to(Literal::Bool(true))
         .or(text::keyword("false").padded().to(Literal::Bool(false)));
 
-    // let op = one_of::<_, _, Simple<char>>("!=")
-    //     .repeated()
-    //     .at_least(1)
-    //     .collect::<String>()
-    //     .map(Literal::OpCall);
+    let equality = ident::<_, Simple<char>>()
+        .then(just("==").padded())
+        .then(ident())
+        .map(|((lhs, _), rhs)| {
+            Literal::BinaryOp(Binary {
+                operator: Operator::Equality,
+                lhs,
+                rhs,
+            })
+        });
 
-    let result = choice::<_, Simple<char>>((comment, boolean))
+    let result = choice::<_, Simple<char>>((comment, bool, equality))
         .repeated()
         .padded();
 
@@ -93,7 +98,7 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
 }
 
 fn main() {
-    let test = r#"! false true // single line comment
+    let test = r#"something == som false true // single line comment
 "#;
 
     println!("{:?}", ast(test));
