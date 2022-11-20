@@ -9,7 +9,7 @@ enum Literal {
     Number,
     String,
     Array,
-    BinaryOp(OpCall),
+    BinaryOp(Binary<String>),
     UnaryOp(Unary<String>),
     Object,
     Comment(String),
@@ -98,39 +98,4 @@ fn main() {
 
     println!("{:?}", ast(test));
     println!("{}", test.trim())
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-
-    #[test]
-    fn can_parse_single_line_comment() {
-        let single_line_comment = r#"
-	    // single line comment
-	"#;
-
-        assert_eq!(
-            parse_comment(single_line_comment).unwrap(),
-            Expression::Comment(Unary {
-                operand: OperatorCall::Comment,
-                value: "single line comment".to_string()
-            })
-        );
-    }
-
-    #[test]
-    fn can_parse_inline_comment() {
-        let inline_comment = r#"
-	    *[name == "Michael"] // inline comment
-	"#;
-
-        assert_eq!(
-            parse_comment(inline_comment).unwrap(),
-            Expression::Comment(Unary {
-                operand: OperatorCall::Comment,
-                value: "inline comment".to_string()
-            })
-        );
-    }
 }
