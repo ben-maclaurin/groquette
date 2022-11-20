@@ -111,7 +111,9 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
     let comment = just("//").then(take_until(text::newline())).map(|c| {
         let (value, _) = c.1;
 
-        Literal::Comment(value.into_iter().collect())
+        let string = value.into_iter().collect::<String>();
+
+        Literal::Comment(String::from(string.trim()))
     });
 
     let bool = text::keyword("true")
@@ -136,6 +138,8 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
     let unary_op = unary_op
         .then(ident())
         .map(|(operator, rhs)| Literal::UnaryOp(Unary { operator, rhs }));
+
+    // let conditional = unaray_op.then(just("=>"))
 
     let result = choice::<_, Simple<char>>((comment, bool, binary_op, unary_op))
         .repeated()
