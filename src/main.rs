@@ -56,13 +56,13 @@ enum Operator {
 
 #[derive(PartialEq, Debug, Clone)]
 struct Unary<T> {
-    operand: Operator,
+    operator: Operator,
     rhs: T,
 }
 
 #[derive(PartialEq, Debug, Clone)]
 struct Binary<T> {
-    operand: Operator,
+    operator: Operator,
     lhs: T,
     rhs: T,
 }
