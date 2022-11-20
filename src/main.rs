@@ -79,18 +79,17 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
         .to(Literal::Bool(true))
         .or(text::keyword("false").padded().to(Literal::Bool(false)));
 
-    let equality = ident::<_, Simple<char>>()
-        .then(just("==").padded())
-        .then(ident())
-        .map(|((lhs, _), rhs)| {
-            Literal::BinaryOp(Binary {
-                operator: Operator::Equality,
-                lhs,
-                rhs,
-            })
-        });
+    let op = choice::<_, Simple<char>>((
+        just::<_, _, Simple<char>>("==").to(Operator::Equality),
+        just::<_, _, Simple<char>>("=").to(Operator::Comparison),
+    ));
 
-    let result = choice::<_, Simple<char>>((comment, bool, equality))
+    let op = ident::<_, Simple<char>>()
+        .then(op.padded())
+        .then(ident())
+        .map(|((lhs, operator), rhs)| Literal::BinaryOp(Binary { operator, lhs, rhs }));
+
+    let result = choice::<_, Simple<char>>((comment, bool, op))
         .repeated()
         .padded();
 
@@ -98,7 +97,7 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
 }
 
 fn main() {
-    let test = r#"something == som false true // single line comment
+    let test = r#"something = som false true // single line comment
 "#;
 
     println!("{:?}", ast(test));
