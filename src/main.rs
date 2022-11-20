@@ -2,25 +2,20 @@ use std::fmt;
 
 use chumsky::{combinator::Map, error::Cheap, prelude::*, primitive::Filter};
 
-// string is temporary, these need to be typed
-#[derive(PartialEq, Debug, Clone)]
-enum Expression {
-    Literal(Literal),
-    SimpleExpression(SimpleExpression),
-    CompoundExpression(CompoundExpression),
-    OperatorCall(OperatorCall),
-    Comment(Unary<String>),
-}
-
 #[derive(Debug, PartialEq, Clone)]
 enum Literal {
     Null,
-    Boolean(bool),
+    Bool(bool),
     Number,
     String,
     Array,
+    BinaryOp(OpCall),
+    UnaryOp(Unary<String>),
     Object,
+    Comment(String),
 }
+
+// struct Comment(String);
 
 #[derive(Debug, PartialEq, Clone)]
 enum SimpleExpression {
@@ -39,7 +34,7 @@ enum CompoundExpression {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-enum OperatorCall {
+enum Operator {
     And,
     Or,
     Not,
@@ -57,42 +52,48 @@ enum OperatorCall {
     Slash,
     Percent,
     StarStar,
-    Comment,
 }
 
 #[derive(PartialEq, Debug, Clone)]
-struct Unary<U> {
-    operand: OperatorCall,
-    value: U,
+struct Unary<T> {
+    operand: Operator,
+    rhs: T,
 }
 
-fn ast(input: &str) -> Result<Vec<Expression>, Vec<Simple<char>>> {
+#[derive(PartialEq, Debug, Clone)]
+struct Binary<T> {
+    operand: Operator,
+    lhs: T,
+    rhs: T,
+}
+
+fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
     let comment = just("//").then(take_until(text::newline())).map(|c| {
         let (value, _) = c.1;
 
-        Expression::Comment(Unary {
-            value: value.into_iter().collect(),
-            operand: OperatorCall::Comment,
-        })
+        Literal::Comment(value.into_iter().collect())
     });
 
-    let result = choice::<_, Simple<char>>((
-        comment,
-        text::keyword("true")
-            .padded()
-            .to(Expression::Literal(Literal::Boolean(true))),
-        text::keyword("false")
-            .padded()
-            .to(Expression::Literal(Literal::Boolean(false))),
-    ))
-    .padded()
-    .repeated();
+    let boolean = text::keyword("true")
+        .padded()
+        .to(Literal::Bool(true))
+        .or(text::keyword("false").padded().to(Literal::Bool(false)));
+
+    let op = one_of::<_, _, Simple<char>>("!=")
+        .repeated()
+        .at_least(1)
+        .collect::<String>()
+        .map(Literal::OpCall);
+
+    let result = choice::<_, Simple<char>>((comment, boolean, op))
+        .repeated()
+        .padded();
 
     result.parse(input)
 }
 
 fn main() {
-    let test = r#"false true // single line comment
+    let test = r#"! false true // single line comment
 "#;
 
     println!("{:?}", ast(test));
