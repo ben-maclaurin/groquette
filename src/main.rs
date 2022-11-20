@@ -79,17 +79,25 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
         .to(Literal::Bool(true))
         .or(text::keyword("false").padded().to(Literal::Bool(false)));
 
-    let op = choice::<_, Simple<char>>((
+    let binary_op = choice::<_, Simple<char>>((
         just::<_, _, Simple<char>>("==").to(Operator::Equality),
         just::<_, _, Simple<char>>("=").to(Operator::Comparison),
+        just::<_, _, Simple<char>>("&&").to(Operator::And),
     ));
 
-    let op = ident::<_, Simple<char>>()
-        .then(op.padded())
+    // let unary_op = choice::<_, Simple<char>>((just::<_, _, Simple<char>>("!").to(Operator::Not), ));
+    let unary_op = just("!").to(Operator::Not);
+
+    let binary_op = ident::<_, Simple<char>>()
+        .then(binary_op.padded())
         .then(ident())
         .map(|((lhs, operator), rhs)| Literal::BinaryOp(Binary { operator, lhs, rhs }));
 
-    let result = choice::<_, Simple<char>>((comment, bool, op))
+    let unary_op = unary_op
+        .then(ident())
+        .map(|(operator, rhs)| Literal::UnaryOp(Unary { operator, rhs }));
+
+    let result = choice::<_, Simple<char>>((comment, bool, binary_op, unary_op))
         .repeated()
         .padded();
 
