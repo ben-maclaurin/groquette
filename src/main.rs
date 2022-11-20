@@ -79,13 +79,13 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
         .to(Literal::Bool(true))
         .or(text::keyword("false").padded().to(Literal::Bool(false)));
 
-    let op = one_of::<_, _, Simple<char>>("!=")
-        .repeated()
-        .at_least(1)
-        .collect::<String>()
-        .map(Literal::OpCall);
+    // let op = one_of::<_, _, Simple<char>>("!=")
+    //     .repeated()
+    //     .at_least(1)
+    //     .collect::<String>()
+    //     .map(Literal::OpCall);
 
-    let result = choice::<_, Simple<char>>((comment, boolean, op))
+    let result = choice::<_, Simple<char>>((comment, boolean))
         .repeated()
         .padded();
 
