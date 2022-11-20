@@ -33,7 +33,7 @@ enum CompoundExpression {
     PipeFuncCall,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Clone)]
 enum Operator {
     And,
     Or,
@@ -65,6 +65,46 @@ struct Binary<T> {
     operator: Operator,
     lhs: T,
     rhs: T,
+}
+
+impl fmt::Debug for Operator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            Operator::And => todo!(),
+            Operator::Or => todo!(),
+            Operator::Not => todo!(),
+            Operator::Equality => todo!(),
+            Operator::Comparison => write!(f, "="),
+            Operator::In => todo!(),
+            Operator::Match => todo!(),
+            Operator::Asc => todo!(),
+            Operator::Desc => todo!(),
+            Operator::UnaryPlus => todo!(),
+            Operator::UnaryMinus => todo!(),
+            Operator::Plus => todo!(),
+            Operator::Minus => todo!(),
+            Operator::Star => todo!(),
+            Operator::Slash => todo!(),
+            Operator::Percent => todo!(),
+            Operator::StarStar => todo!(),
+        }
+    }
+}
+
+fn print(tree: Vec<Literal>) -> String {
+    let mut output = String::from("");
+
+    for leaf in tree {
+        match leaf {
+            Literal::Comment(c) => output.push_str(&format!("// {}", c.trim())),
+            Literal::BinaryOp(b) => {
+                output.push_str(&format!("{} {:?} {}", b.lhs, b.operator, b.rhs))
+            }
+            _ => {}
+        }
+    }
+
+    output
 }
 
 fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
@@ -105,9 +145,9 @@ fn ast(input: &str) -> Result<Vec<Literal>, Vec<Simple<char>>> {
 }
 
 fn main() {
-    let test = r#"something = som false true // single line comment
+    let test = r#"something=som false true // single line comment
 "#;
 
     println!("{:?}", ast(test));
-    println!("{}", test.trim())
+    println!("{:?}", print(ast(test).unwrap()))
 }
